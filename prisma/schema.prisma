@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String
+  phone          String
+  passwordHash   String
+  utilityName    String? // DISCOM e.g. MSEDCL, TNEB
+  consumerNumber String? // electricity consumer number
+  state          String?
+  role           String       @default("INVESTOR")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  investments    Investment[]
+}
+
+model Project {
+  id               String       @id @default(cuid())
+  code             String       @unique // GK-001
+  name             String // Kavach Aarambh Bloc-2
+  hostSociety      String // Tulsi Aarambh CHS Ltd
+  location         String // Badlapur East, Thane
+  state            String // Maharashtra
+  utility          String // MSEDCL
+  capacityKw       Float // 106.79
+  availableKw      Float
+  creditsPerKwh    Float // 6.71
+  pricePerKw       Float // 55326 (all-inclusive platform price excl. GST)
+  tenureMonths     Int // 177
+  p90KwhPerKw      Float // 1300
+  annualDegradation Float // 1 (%)
+  status           String       @default("OPEN") // OPEN | FILLING | FULL
+  commissionedOn   DateTime?
+  tagline          String?
+  imageKey         String       @default("emerald")
+  sortOrder        Int          @default(0)
+  createdAt        DateTime     @default(now())
+  investments      Investment[]
+}
+
+model Investment {
+  id               String        @id @default(cuid())
+  ref              String        @unique // KVCG-2026-000123
+  userId           String
+  projectId        String
+  amount           Float // base capacity cost
+  capacityWatts    Float
+  onboardingFee    Float // 1%
+  gstAmount        Float // 12%
+  totalPayable     Float
+  annualKwhP90     Float
+  securedKwhYear1  Float
+  monthlyCredit    Float // fixed monthly credit commitment (secured generation)
+  status           String        @default("ACTIVE") // ACTIVE | EXIT_REQUESTED | EXITED
+  agreementVersion String // DSA-v2.0
+  docHash          String // SHA-256 of contract payload
+  acceptedAt       DateTime
+  acceptedIp       String?
+  exitRequestedAt  DateTime?
+  exitPayout       Float?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  user             User          @relation(fields: [userId], references: [id])
+  project          Project       @relation(fields: [projectId], references: [id])
+  credits          CreditEntry[]
+}
+
+model CreditEntry {
+  id           String     @id @default(cuid())
+  investmentId String
+  periodLabel  String // "Sep 2026"
+  periodStart  DateTime
+  unitsKwh     Float
+  grossAmount  Float
+  topUpAmount  Float      @default(0) // Kavach Assurance deficit top-up
+  netAmount    Float
+  billStatus   String     @default("PENDING") // APPLIED | PENDING
+  appliedAt    DateTime?
+  createdAt    DateTime   @default(now())
+  investment   Investment @relation(fields: [investmentId], references: [id])
+}
